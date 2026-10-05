@@ -1,0 +1,32 @@
+# moectf 2026 · Web 安全与渗透测试 ·「江洋大盗」
+# 原题给定的附加条件（过滤清单），逐字照录，除本注释外未作任何改动。
+# 语义：命中即拦（presence），不做替换，大小写不敏感、关键字嵌套亦无效。
+# 详见同目录 writeup_moectf_archive.md
+BLACKLIST = [
+    "union",
+    "sleep",
+    "benchmark",
+    "get_lock",
+    "release_lock",
+    "extractvalue",
+    "updatexml",
+    "load_file",
+    "outfile",
+    "dumpfile",
+    " into ",
+    "insert",
+    "update",
+    "delete",
+    "drop",
+    "alter",
+    "create",
+    "replace",
+    "truncate",
+    "handler",
+    "procedure",
+    "--",
+    "/*",
+    "*/",
+    "#",
+    ";",
+]

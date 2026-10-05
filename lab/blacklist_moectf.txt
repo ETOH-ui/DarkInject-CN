@@ -1,0 +1,34 @@
+BLACKLIST = [
+    # --- 注释符（命中即拦）---
+    "--",
+    "#",
+    "/*",
+    # --- 关键字 ---
+    "union",
+    # --- 延时函数 ---
+    "sleep",
+    "benchmark",
+    "get_lock",
+    # --- 报错函数 ---
+    "extractvalue",
+    "updatexml",
+    # --- 文件 / 系统表 ---
+    "load_file",
+    "mysql.user",
+]
+
+# 靶场：网信院往年试题检索系统（Server: ArchiveQuery/2.0 / Python 3.9）
+# 注入点：POST id=1  →  SQL 形状约为 WHERE id=$id（数字型，无引号包裹，
+#         所以加 ' 反而会语法错 → 直接 1 AND 1=1 即可）
+#
+# 实测（2026-10-04）：
+#   可用：select/from/where/limit/order/by/and/or、substr/ascii/ord/length/
+#         concat/group_concat、version()/database()/current_user()/session_user()、
+#         information_schema；order by 1..3 为真、4 为假 → 表 3 列
+#   被拦：上面列出的这些 + 一切注释收尾写法
+#   注意：过滤是「命中即拦」，对 'union' 连大小写混写、'ununionion' 嵌套都无效；
+#         报错信息不回显（统一吐「没有找到匹配记录」）→ 报错注入也没戏
+#
+# 结论：只有布尔盲注（B）可行；但 select/order by/group_concat 都在，
+#      用 Shell 的 expr + GROUP_CONCAT 可以几轮就把结构+数据全抽出来。
+#      union 用不了是因为 union 关键字被拦，不是列数问题。

